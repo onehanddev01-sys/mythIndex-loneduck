@@ -200,7 +200,7 @@ app.post('/worlds', authenticateToken, async (req, res) => {
     
     const result = await pool.query(`
       INSERT INTO worlds (name, description, genre, tone, cover_color, is_public, owner_id) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7) 
+      VALUES ($1, $2, $3, $4, $5, $6) 
       RETURNING *
     `, [name, description, genre, tone, cover_color || '#6366f1', is_public || false, req.user.id]);
     
