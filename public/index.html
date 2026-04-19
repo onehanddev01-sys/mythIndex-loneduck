@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MythIndex - Worldbuilding Platform</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%237c6fea%22/><text x=%2250%22 y=%2255%22 font-size=%2240%22 fill=%22white%22 text-anchor=%22middle%22 font-weight=%22bold%22>MI</text></svg>">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Vis.js for Relationship Map -->
+    <script src="https://unpkg.com/vis-network@latest/standalone/umd/vis-network.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#191919',
+                            sidebar: '#1f1f1f',
+                            card: '#252525',
+                            border: '#2f2f2f',
+                            text: '#e8e8e8',
+                            secondary: '#999',
+                            muted: '#666',
+                            accent: '#7c6fea'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="dark:bg-dark-bg text-dark-text h-screen overflow-hidden">
+    <!-- Auth Modal (shown when not logged in) -->
+    <div id="authModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-dark-card rounded-lg p-8 w-full max-w-md border border-dark-border">
+            <div class="text-center mb-6">
+                <h1 class="text-3xl font-bold mb-2">MythIndex</h1>
+                <p class="text-dark-secondary">Worldbuilding Platform</p>
+            </div>
+            
+            <div class="flex mb-6 border-b border-dark-border">
+                <button id="loginTab" class="flex-1 pb-2 border-b-2 border-dark-accent text-dark-accent font-medium">Login</button>
+                <button id="registerTab" class="flex-1 pb-2 text-dark-secondary hover:text-dark-text">Register</button>
+            </div>
+            
+            <!-- Login Form -->
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <input type="text" id="loginUsername" placeholder="Username" required
+                           class="w-full px-4 py-2 bg-dark-bg border border-dark-border rounded-lg focus:outline-none focus:border-dark-accent">
+                </div>
+                <div>
+                    <input type="password" id="loginPassword" placeholder="Password" required
+                           class="w-full px-4 py-2 bg-dark-bg border border-dark-border rounded-lg focus:outline-none focus:border-dark-accent">
+                </div>
+                <button type="submit" class="w-full bg-dark-accent text-white py-2 rounded-lg hover:bg-opacity-90 transition">
+                    Login
+                </button>
+            </form>
+            
+            <!-- Register Form -->
+            <form id="registerForm" class="space-y-4 hidden">
+                <div>
+                    <input type="text" id="registerUsername" placeholder="Username" required
+                           class="w-full px-4 py-2 bg-dark-bg border border-dark-border rounded-lg focus:outline-none focus:border-dark-accent">
+                </div>
+                <div>
+                    <input type="email" id="registerEmail" placeholder="Email" required
+                           class="w-full px-4 py-2 bg-dark-bg border border-dark-border rounded-lg focus:outline-none focus:border-dark-accent">
+                </div>
+                <div>
+                    <input type="password" id="registerPassword" placeholder="Password" required
+                           class="w-full px-4 py-2 bg-dark-bg border border-dark-border rounded-lg focus:outline-none focus:border-dark-accent">
+                </div>
+                <button type="submit" class="w-full bg-dark-accent text-white py-2 rounded-lg hover:bg-opacity-90 transition">
+                    Register
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Main App (hidden until logged in) -->
+    <div id="mainApp" class="hidden h-full flex">
+        <!-- Sidebar -->
+        <div id="sidebar" class="w-64 bg-dark-sidebar border-r border-dark-border flex flex-col">
+            <!-- Logo Section -->
+            <div class="p-4 border-b border-dark-border">
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-dark-accent rounded flex items-center justify-center">
+                        <span class="text-white font-bold text-sm">MI</span>
+                    </div>
+                    <span class="text-xl font-bold">MythIndex</span>
+                </div>
+            </div>
+            
+            <!-- World Selector -->
+            <div class="p-4 border-b border-dark-border">
+                <button id="worldSelector" class="w-full flex items-center justify-between p-2 bg-dark-bg rounded-lg hover:bg-opacity-80 transition">
+                    <span id="currentWorldName" class="text-sm">Select World</span>
+                    <i class="fas fa-chevron-down text-xs"></i>
+                </button>
+            </div>
+            
+            <!-- Page Tree -->
+            <div class="flex-1 overflow-y-auto p-4">
+                <div id="pageTree" class="space-y-1">
+                    <!-- Pages will be rendered here -->
+                </div>
+                <button id="newPageBtn" class="w-full mt-4 p-2 border border-dark-border rounded-lg hover:bg-dark-bg transition text-sm">
+                    <i class="fas fa-plus mr-2"></i>New Page
+                </button>
+            </div>
+            
+            <!-- User Section -->
+            <div class="p-4 border-t border-dark-border">
+                <div class="flex items-center justify-between">
+                    <span id="username" class="text-sm text-dark-secondary"></span>
+                    <button id="logoutBtn" class="text-sm text-dark-secondary hover:text-dark-text">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col">
+            <!-- Top Bar -->
+            <div class="h-14 bg-dark-sidebar border-b border-dark-border flex items-center justify-between px-4">
+                <div class="flex items-center space-x-4">
+                    <button id="sidebarToggle" class="lg:hidden text-dark-secondary hover:text-dark-text">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div id="breadcrumb" class="text-sm text-dark-secondary">
+                        <!-- Breadcrumb will be rendered here -->
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button id="searchBtn" class="p-2 text-dark-secondary hover:text-dark-text">
+                        <i class="fas fa-search"></i>
+                    </button>
+                    <button id="propertiesToggle" class="p-2 text-dark-secondary hover:text-dark-text">
+                        <i class="fas fa-info-circle"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Content Area -->
+            <div class="flex-1 flex overflow-hidden">
+                <!-- Editor -->
+                <div id="editorContainer" class="flex-1 overflow-y-auto">
+                    <!-- World Overview with Flex Layout -->
+                    <div id="worldOverview" class="hidden p-8 max-w-6xl mx-auto">
+                        <!-- World overview will be rendered here -->
+                    </div>
+                    
+                    <!-- Page Editor -->
+                    <div id="pageEditor" class="hidden">
+                        <div class="max-w-6xl mx-auto p-8">
+                                <!-- Page header with flex layout -->
+                                <div class="flex items-start justify-between mb-6">
+                                    <div class="flex items-center space-x-4 flex-1">
+                                        <button id="pageIcon" class="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center hover:opacity-80 transition">
+                                            <i class="fas fa-file-alt text-white text-2xl"></i>
+                                        </button>
+                                        <div class="flex-1">
+                                            <h1 id="pageTitle" contenteditable="true" class="text-4xl font-bold outline-none placeholder-dark-muted">Untitled</h1>
+                                            <div class="flex items-center space-x-4 mt-2 text-sm text-dark-secondary">
+                                                <span id="pageTypeBadge" class="px-2 py-1 bg-gray-700 rounded">Document</span>
+                                                <span id="lastModified">Last modified: Just now</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <button id="viewToggle" class="p-2 hover:bg-dark-bg rounded transition">
+                                            <i class="fas fa-th-large"></i>
+                                        </button>
+                                        <button id="moreOptions" class="p-2 hover:bg-dark-bg rounded transition">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            
+                            <!-- Properties Panel (Structured-first) -->
+                            <div class="mb-8">
+                                <h2 class="text-xl font-bold mb-4 text-dark-text">Properties</h2>
+                                <div id="propertiesContent" class="bg-dark-bg border border-dark-border rounded-lg p-6">
+                                    <!-- Properties will be rendered here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Content Blocks (Notes Section) -->
+                            <div>
+                                <h2 class="text-xl font-bold mb-4 text-dark-text">Notes</h2>
+                                <div id="contentBlocks" class="flex flex-col space-y-2">
+                                    <!-- Blocks will be rendered here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Add Block Button -->
+                            <div class="flex items-center space-x-2 mt-4 text-dark-secondary">
+                                <button id="addBlockBtn" class="flex items-center space-x-2 px-3 py-1 hover:bg-dark-bg rounded transition">
+                                    <i class="fas fa-plus text-sm"></i>
+                                    <span class="text-sm">Add block</span>
+                                </button>
+                                <span class="text-xs">Type '/' for commands</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Empty State -->
+                    <div id="emptyState" class="hidden flex items-center justify-center h-full">
+                        <div class="text-center">
+                            <div class="w-20 h-20 mx-auto mb-4 bg-dark-accent rounded-lg flex items-center justify-center">
+                                <span class="text-white text-2xl font-bold">MI</span>
+                            </div>
+                            <h2 class="text-2xl font-bold mb-2">Welcome to MythIndex</h2>
+                            <p class="text-dark-secondary mb-6">Create your first world to start building</p>
+                            <button id="createFirstWorldBtn" class="bg-dark-accent text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition">
+                                Create World
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Properties Panel -->
+                <div id="propertiesPanel" class="hidden w-60 bg-dark-sidebar border-l border-dark-border overflow-y-auto">
+                    <div class="p-4">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-medium">Properties</h3>
+                            <button id="closeProperties" class="text-dark-secondary hover:text-dark-text">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div id="propertiesContent">
+                            <!-- Properties will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- World Picker Modal -->
+    <div id="worldPickerModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-dark-card rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto border border-dark-border">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold">Select World</h2>
+                <button id="closeWorldPicker" class="text-dark-secondary hover:text-dark-text">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div id="worldList" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <!-- World cards will be rendered here -->
+            </div>
+            
+            <button id="createNewWorldBtn" class="w-full bg-dark-accent text-white py-2 rounded-lg hover:bg-opacity-90 transition">
+                <i class="fas fa-plus mr-2"></i>Create New World
+            </button>
+        </div>
+    </div>
+    
+    <!-- Create World Modal -->
+    <div id="createWorldModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-dark-card rounded-lg p-6 w-full max-w-md border border-dark-border">
+            <h2 class="text-xl font-bold mb-4">Create New World</h2>
+            <form id="createWorldForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Name</label>
+                    <input type="text" id="worldName" required
+                           class="w-full px-4 py-2 bg-dark-bg border border-dark-border rounded-lg focus:outline-none focus:border-dark-accent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Description</label>
+                    <textarea id="worldDescription" rows="3"
+                              class="w-full px-4 py-2 bg-dark-bg border border-dark-border rounded-lg focus:outline-none focus:border-dark-accent"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Genre</label>
+                        <select id="worldGenre" class="w-full px-4 py-2 bg-dark-bg border border-dark-border rounded-lg focus:outline-none focus:border-dark-accent">
+                            <option value="">Select Genre</option>
+                            <option value="Fantasy">Fantasy</option>
+                            <option value="Sci-Fi">Sci-Fi</option>
+                            <option value="Horror">Horror</option>
+                            <option value="Mystery">Mystery</option>
+                            <option value="Historical">Historical</option>
+                            <option value="Modern">Modern</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Tone</label>
+                        <select id="worldTone" class="w-full px-4 py-2 bg-dark-bg border border-dark-border rounded-lg focus:outline-none focus:border-dark-accent">
+                            <option value="">Select Tone</option>
+                            <option value="Serious">Serious</option>
+                            <option value="Light">Light</option>
+                            <option value="Dark">Dark</option>
+                            <option value="Humorous">Humorous</option>
+                            <option value="Epic">Epic</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Cover Color</label>
+                    <input type="color" id="worldColor" value="#6366f1"
+                           class="w-full h-10 bg-dark-bg border border-dark-border rounded-lg">
+                </div>
+                <div class="flex space-x-2">
+                    <button type="submit" class="flex-1 bg-dark-accent text-white py-2 rounded-lg hover:bg-opacity-90 transition">
+                        Create World
+                    </button>
+                    <button type="button" id="cancelCreateWorld" class="flex-1 bg-dark-bg text-dark-text py-2 rounded-lg hover:bg-opacity-80 transition border border-dark-border">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Search Modal -->
+    <div id="searchModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-dark-card rounded-lg p-6 w-full max-w-md border border-dark-border">
+            <div class="flex items-center space-x-2 mb-4">
+                <i class="fas fa-search text-dark-secondary"></i>
+                <input type="text" id="searchInput" placeholder="Search pages..." 
+                       class="flex-1 bg-transparent outline-none text-lg">
+                <button id="closeSearch" class="text-dark-secondary hover:text-dark-text">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="searchResults" class="max-h-64 overflow-y-auto">
+                <!-- Search results will be rendered here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Icon Picker Modal -->
+    <div id="iconPickerModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-dark-card rounded-lg p-6 w-full max-w-md border border-dark-border">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-medium">Choose Icon</h3>
+                <button id="closeIconPicker" class="text-dark-secondary hover:text-dark-text">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <input type="text" id="iconSearch" placeholder="Search icons..." 
+                   class="w-full px-4 py-2 bg-dark-bg border border-dark-border rounded-lg mb-4 outline-none">
+            <div id="iconGrid" class="grid grid-cols-8 gap-2 max-h-64 overflow-y-auto">
+                <!-- Icons will be rendered here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Command Menu -->
+    <div id="commandMenu" class="hidden fixed bg-dark-card border border-dark-border rounded-lg shadow-lg z-50 overflow-hidden">
+        <div id="commandList" class="max-h-64 overflow-y-auto">
+            <!-- Commands will be rendered here -->
+        </div>
+    </div>
+    
+    <!-- Relationship Map Modal -->
+    <div id="relationshipMapModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-dark-card rounded-lg w-full h-full max-w-6xl max-h-screen mx-4 border border-dark-border">
+            <div class="flex items-center justify-between p-4 border-b border-dark-border">
+                <h3 class="text-lg font-bold">Relationship Map</h3>
+                <div class="flex items-center space-x-2">
+                    <button id="zoomIn" class="p-2 hover:bg-dark-bg rounded transition">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                    <button id="zoomOut" class="p-2 hover:bg-dark-bg rounded transition">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <button id="fitMap" class="p-2 hover:bg-dark-bg rounded transition">
+                        <i class="fas fa-compress"></i>
+                    </button>
+                    <button id="closeRelationshipMap" class="p-2 hover:bg-dark-bg rounded transition">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="relationshipMapContainer" class="w-full h-full" style="height: calc(100vh - 200px);">
+                <!-- Relationship map will be rendered here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2">
+        <!-- Toasts will be rendered here -->
+    </div>
+    
+    <!-- App Script -->
+    <script src="/app.js"></script>
+</body>
+</html>

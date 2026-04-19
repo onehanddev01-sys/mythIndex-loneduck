@@ -1,0 +1,15 @@
+{
+  "build": {
+    "builder": "NIXPACKAGES",
+    "buildCommand": "npm install",
+    "installCommand": "npm install",
+    "startCommand": "npm start"
+  },
+  "deploy": {
+    "startCommand": "npm start",
+    "healthcheckPath": "/",
+    "healthcheckTimeout": 100,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}
