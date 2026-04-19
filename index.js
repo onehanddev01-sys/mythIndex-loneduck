@@ -455,6 +455,46 @@ app.get('/api/search/global', authenticateToken, async (req, res) => {
   }
 });
 
+// PUT route for updating pages
+app.put('/pages/:id', authenticateToken, async (req, res) => {
+  try {
+    const { title, icon, page_type, parent_id, properties, content } = req.body;
+    
+    const result = await pool.query(`
+      UPDATE pages 
+      SET title = $1, icon = $2, page_type = $3, parent_id = $4, properties = $5, content = $6, updated_at = NOW()
+      WHERE id = $7 AND created_by = $8
+      RETURNING *
+    `, [title, icon, page_type, parent_id, properties, content, req.params.id, req.user.id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Page not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update page' });
+  }
+});
+
+// DELETE route for pages
+app.delete('/pages/:id', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'DELETE FROM pages WHERE id = $1 AND created_by = $2 RETURNING id',
+      [req.params.id, req.user.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Page not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete page' });
+  }
+});
+
 // Serve index.html for all other routes
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
